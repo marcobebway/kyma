@@ -30,7 +30,7 @@ const (
 	srcID               = "test.local"
 
 	subscriberName           = "test-core-event-bus-subscriber"
-	subscriberImage          = "eu.gcr.io/kyma-project/pr/event-bus-e2e-subscriber:PR-4893"
+	subscriberImage          = "eu.gcr.io/kyma-project/develop/event-bus-e2e-subscriber:bd34bfe5"
 	publishEventEndpointURL  = "http://event-publish-service.kyma-system:8080/v1/events"
 	publishStatusEndpointURL = "http://event-publish-service.kyma-system:8080/v1/status/ready"
 )
