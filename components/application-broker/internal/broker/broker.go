@@ -8,6 +8,11 @@ import (
 	listers "github.com/kyma-project/kyma/components/application-broker/pkg/client/listers/applicationconnector/v1alpha1"
 	"github.com/kyma-project/kyma/components/application-broker/platform/idprovider"
 	"github.com/sirupsen/logrus"
+
+	clientgocorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
+
+	kneventingclientsetv1alpha1 "knative.dev/eventing/pkg/client/clientset/versioned/typed/messaging/v1alpha1"
+	kneventinglistersv1alpha1 "knative.dev/eventing/pkg/client/listers/messaging/v1alpha1"
 )
 
 //go:generate mockery -name=instanceStorage -output=automock -outpkg=automock -case=underscore
@@ -105,7 +110,10 @@ func New(applicationFinder appFinder,
 	serviceInstanceGetter serviceInstanceGetter,
 	emLister listers.ApplicationMappingLister,
 	brokerService *NsBrokerService,
-	log *logrus.Entry) *Server {
+	log *logrus.Entry,
+	namespaces clientgocorev1.NamespaceInterface,
+	channelLister kneventinglistersv1alpha1.ChannelLister,
+	messagingClient kneventingclientsetv1alpha1.MessagingV1alpha1Interface) *Server {
 
 	idpRaw := idprovider.New()
 	idp := func() (internal.OperationID, error) {
@@ -125,7 +133,7 @@ func New(applicationFinder appFinder,
 			conv:              &appToServiceConverter{},
 			appEnabledChecker: enabledChecker,
 		},
-		provisioner:   NewProvisioner(instStorage, instStorage, stateService, opStorage, opStorage, accessChecker, applicationFinder, serviceInstanceGetter, eaClient, instStorage, idp, log),
+		provisioner:   NewProvisioner(instStorage, instStorage, stateService, opStorage, opStorage, accessChecker, applicationFinder, serviceInstanceGetter, eaClient, instStorage, idp, log, namespaces, channelLister, messagingClient),
 		deprovisioner: NewDeprovisioner(instStorage, stateService, opStorage, opStorage, idp, log),
 		binder: &bindService{
 			appSvcFinder: applicationFinder,

@@ -25,10 +25,14 @@ import (
 	appCli "github.com/kyma-project/kyma/components/application-operator/pkg/client/clientset/versioned"
 	appInformer "github.com/kyma-project/kyma/components/application-operator/pkg/client/informers/externalversions"
 	"github.com/sirupsen/logrus"
+
 	v1 "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
+
+	kneventingclientset "knative.dev/eventing/pkg/client/clientset/versioned"
+	kneventinginformers "knative.dev/eventing/pkg/client/informers/externalversions"
 )
 
 // informerResyncPeriod defines how often informer will execute relist action. Setting to zero disable resync.
@@ -61,8 +65,10 @@ func main() {
 	fatalOnError(err)
 	k8sClient, err := kubernetes.NewForConfig(k8sConfig)
 	fatalOnError(err)
+	knClient, err := kneventingclientset.NewForConfig(k8sConfig)
+	fatalOnError(err)
 
-	srv := SetupServerAndRunControllers(cfg, log, stopCh, k8sClient, scClientSet, appClient, mClient)
+	srv := SetupServerAndRunControllers(cfg, log, stopCh, k8sClient, scClientSet, appClient, mClient, knClient)
 
 	fatalOnError(srv.Run(ctx, fmt.Sprintf(":%d", cfg.Port)))
 }
@@ -73,6 +79,7 @@ func SetupServerAndRunControllers(cfg *config.Config, log *logrus.Entry, stopCh 
 	scClientSet scCs.Interface,
 	appClient appCli.Interface,
 	mClient mappingCli.Interface,
+	knClient kneventingclientset.Interface,
 ) *broker.Server {
 
 	// create storage factory
@@ -110,6 +117,9 @@ func SetupServerAndRunControllers(cfg *config.Config, log *logrus.Entry, stopCh 
 	relistRequester := syncer.NewRelistRequester(nsBrokerSyncer, cfg.BrokerRelistDurationWindow, log)
 	siFacade := broker.NewServiceInstanceFacade(scInformersGroup.ServiceInstances().Informer())
 
+	// knative informers
+	knInformers := kneventinginformers.NewSharedInformerFactory(knClient, 0)
+
 	accessChecker := access.New(sFact.Application(), mClient.ApplicationconnectorV1alpha1(), sFact.Instance())
 
 	appSyncCtrl := syncer.New(appInformersGroup.Applications(), sFact.Application(), sFact.Application(), relistRequester, log)
@@ -123,7 +133,9 @@ func SetupServerAndRunControllers(cfg *config.Config, log *logrus.Entry, stopCh 
 
 	// create broker
 	srv := broker.New(sFact.Application(), sFact.Instance(), sFact.InstanceOperation(), accessChecker,
-		mClient.ApplicationconnectorV1alpha1(), siFacade, mInformersGroup.ApplicationMappings().Lister(), brokerService, log)
+		mClient.ApplicationconnectorV1alpha1(), siFacade, mInformersGroup.ApplicationMappings().Lister(), brokerService,
+		log, k8sClient.CoreV1().Namespaces(), knInformers.Messaging().V1alpha1().Channels().Lister(),
+		knClient.MessagingV1alpha1())
 
 	// start informers
 	scInformerFactory.Start(stopCh)
