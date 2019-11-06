@@ -1480,7 +1480,7 @@
   revision = "3d4f5b7dea0b7c63c77d7fb1f0ee433ad8d54667"
 
 [[projects]]
-  digest = "1:80535fe80acffbc4bf23db17e04e1069ec3955e96b8d3eb25d0b5547496cf8ef"
+  digest = "1:84e1c201ebf36bb3f8a888ca92664ed303055cb346a3bb42a506d3047f0b1c03"
   name = "knative.dev/eventing"
   packages = [
     "pkg/apis/duck",
@@ -1492,14 +1492,10 @@
     "pkg/apis/sources",
     "pkg/apis/sources/v1alpha1",
     "pkg/client/clientset/versioned",
-    "pkg/client/clientset/versioned/fake",
     "pkg/client/clientset/versioned/scheme",
     "pkg/client/clientset/versioned/typed/eventing/v1alpha1",
-    "pkg/client/clientset/versioned/typed/eventing/v1alpha1/fake",
     "pkg/client/clientset/versioned/typed/messaging/v1alpha1",
-    "pkg/client/clientset/versioned/typed/messaging/v1alpha1/fake",
     "pkg/client/clientset/versioned/typed/sources/v1alpha1",
-    "pkg/client/clientset/versioned/typed/sources/v1alpha1/fake",
     "pkg/client/informers/externalversions",
     "pkg/client/informers/externalversions/eventing",
     "pkg/client/informers/externalversions/eventing/v1alpha1",
@@ -1644,13 +1640,12 @@
     "k8s.io/kubernetes/pkg/controller",
     "knative.dev/eventing/pkg/apis/messaging/v1alpha1",
     "knative.dev/eventing/pkg/client/clientset/versioned",
-    "knative.dev/eventing/pkg/client/clientset/versioned/fake",
+    "knative.dev/eventing/pkg/client/clientset/versioned/typed/eventing/v1alpha1",
     "knative.dev/eventing/pkg/client/clientset/versioned/typed/messaging/v1alpha1",
     "knative.dev/eventing/pkg/client/informers/externalversions",
     "knative.dev/eventing/pkg/client/listers/messaging/v1alpha1",
     "knative.dev/pkg/apis",
     "knative.dev/pkg/apis/v1alpha1",
-    "knative.dev/pkg/kmeta",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1

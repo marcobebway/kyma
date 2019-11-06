@@ -14,6 +14,7 @@ import (
 
 	kneventingapisv1alpha1 "knative.dev/eventing/pkg/apis/messaging/v1alpha1"
 	kneventingclientset "knative.dev/eventing/pkg/client/clientset/versioned"
+	kneventingv1alpha1 "knative.dev/eventing/pkg/client/clientset/versioned/typed/eventing/v1alpha1"
 	kneventingclientsetv1alpha1 "knative.dev/eventing/pkg/client/clientset/versioned/typed/messaging/v1alpha1"
 	kneventinginformers "knative.dev/eventing/pkg/client/informers/externalversions"
 	kneventinglistersv1alpha1 "knative.dev/eventing/pkg/client/listers/messaging/v1alpha1"
@@ -62,6 +63,10 @@ func NewKnativeClient(config *rest.Config) (*KnClient, error) {
 	stop := make(chan struct{})
 	informerFactory.Start(stop)
 	waitForInformersSyncOrDie(informerFactory)
+
+	// migration issue
+	sub := kneventingv1alpha1.Subscription{}
+	_ = sub
 
 	return knativeClient, nil
 }
