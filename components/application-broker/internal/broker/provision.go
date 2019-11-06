@@ -3,9 +3,7 @@ package broker
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
-	"regexp"
 	"sync"
 	"time"
 
@@ -13,23 +11,16 @@ import (
 	"github.com/kubernetes-sigs/service-catalog/pkg/apis/servicecatalog/v1beta1"
 	"github.com/kyma-project/kyma/components/application-broker/internal"
 	"github.com/kyma-project/kyma/components/application-broker/internal/access"
+	"github.com/kyma-project/kyma/components/application-broker/internal/knative"
 	"github.com/kyma-project/kyma/components/application-broker/pkg/apis/applicationconnector/v1alpha1"
 	v1client "github.com/kyma-project/kyma/components/application-broker/pkg/client/clientset/versioned/typed/applicationconnector/v1alpha1"
 	"github.com/pkg/errors"
 	osb "github.com/pmorie/go-open-service-broker-client/v2"
 	"github.com/sirupsen/logrus"
 
-	apicorev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	k8spkglabels "k8s.io/apimachinery/pkg/labels"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
-
-	kneventingapisv1alpha1 "knative.dev/eventing/pkg/apis/messaging/v1alpha1"
-	kneventingclientsetv1alpha1 "knative.dev/eventing/pkg/client/clientset/versioned/typed/messaging/v1alpha1"
-	kneventinglistersv1alpha1 "knative.dev/eventing/pkg/client/listers/messaging/v1alpha1"
-	knpkgapis "knative.dev/pkg/apis"
-	knpkgapisv1alpha1 "knative.dev/pkg/apis/v1alpha1"
 )
 
 const (
@@ -46,18 +37,11 @@ const (
 
 	// knSubscriptionNamePrefix is the prefix used for the generated Knative Subscription name
 	knSubscriptionNamePrefix = "brokersub"
-
-	// maxPrefixLength for limiting the max length of the name prefix
-	maxPrefixLength = 10
-
-	// generatedNameSeparator for adding a separator after the generated name prefix
-	generatedNameSeparator = "-"
 )
 
 // NewProvisioner creates provisioner
 func NewProvisioner(instanceInserter instanceInserter, instanceGetter instanceGetter, instanceStateGetter instanceStateGetter, operationInserter operationInserter, operationUpdater operationUpdater, accessChecker access.ProvisionChecker, appSvcFinder appSvcFinder, serviceInstanceGetter serviceInstanceGetter, eaClient v1client.ApplicationconnectorV1alpha1Interface, iStateUpdater instanceStateUpdater,
-	operationIDProvider func() (internal.OperationID, error), log logrus.FieldLogger, namespaces typedcorev1.NamespaceInterface, channelLister kneventinglistersv1alpha1.ChannelLister,
-	messagingClient kneventingclientsetv1alpha1.MessagingV1alpha1Interface) *ProvisionService {
+	operationIDProvider func() (internal.OperationID, error), log logrus.FieldLogger, namespaces typedcorev1.NamespaceInterface, knClient *knative.Client) *ProvisionService {
 	return &ProvisionService{
 		instanceInserter:      instanceInserter,
 		instanceGetter:        instanceGetter,
@@ -73,8 +57,7 @@ func NewProvisioner(instanceInserter instanceInserter, instanceGetter instanceGe
 		maxWaitTime:           time.Minute,
 		log:                   log.WithField("service", "provisioner"),
 		namespaces:            namespaces,
-		channelLister:         channelLister,
-		messagingClient:       messagingClient,
+		knClient:              knClient,
 	}
 }
 
@@ -92,8 +75,7 @@ type ProvisionService struct {
 	accessChecker         access.ProvisionChecker
 	serviceInstanceGetter serviceInstanceGetter
 	namespaces            typedcorev1.NamespaceInterface
-	channelLister         kneventinglistersv1alpha1.ChannelLister
-	messagingClient       kneventingclientsetv1alpha1.MessagingV1alpha1Interface
+	knClient              *knative.Client
 
 	mu sync.Mutex
 
@@ -345,11 +327,13 @@ func (svc *ProvisionService) enableDefaultKnativeEventingBrokerOnSuccessProvisio
 	// get the namespace and return error if it does not exist
 	namespace, err := svc.namespaces.Get(ns, metav1.GetOptions{})
 	if err != nil {
+		svc.log.Printf("error getting namespace: [%s] [%v]", ns, err)
 		return err
 	}
 
 	// check if the namespace already has the knative-eventing-injection label and it is set to true
 	if val, ok := namespace.Labels[knativeEventingInjectionLabelKey]; ok && val == knativeEventingInjectionLabelValueEnabled {
+		svc.log.Printf("the default Knative Eventing Broker is already enabled for the namespace: [%s]", namespace.Name)
 		return nil
 	}
 
@@ -358,6 +342,9 @@ func (svc *ProvisionService) enableDefaultKnativeEventingBrokerOnSuccessProvisio
 
 	// update the namespace
 	_, err = svc.namespaces.Update(namespace)
+	if err != nil {
+		svc.log.Printf("error enabling the default Knative Eventing Broker for namespace: [%v] [%v]", namespace, err)
+	}
 	return err
 }
 
@@ -372,25 +359,25 @@ func (svc *ProvisionService) persistKnativeSubscriptionOnSuccessProvision(applic
 	}
 
 	// construct the default broker URI using the given namespace.
-	defaultBrokerURI := getDefaultBrokerURI(ns)
+	defaultBrokerURI := knative.GetDefaultBrokerURI(ns)
 
 	// get the Knative channel by labels
-	channel, err := svc.getKnativeChannelByLabels(integrationNamespace, labels)
+	channel, err := (*svc.knClient).GetChannelByLabels(integrationNamespace, labels)
 	if err != nil {
 		return err
 	}
 
 	// try to get the knative subscription in case it was created before by a previous provisioning request
-	currentSubscription, err := svc.getKnativeSubscriptionByLabels(ns, labels)
+	currentSubscription, err := (*svc.knClient).GetSubscriptionByLabels(ns, labels)
 	switch {
 	// the subscription does not exist before, create a new one
 	case apierrors.IsNotFound(err):
 		{
 			// create the Knative subscription
-			subscription := newKnativeSubscription(knSubscriptionNamePrefix, ns, defaultBrokerURI, channel, withSpec)
+			subscription := knative.Subscription(knSubscriptionNamePrefix, ns).Spec(channel, defaultBrokerURI).Build()
 
 			// create the Knative subscription
-			_, err = svc.messagingClient.Subscriptions(integrationNamespace).Create(subscription)
+			_, err = (*svc.knClient).CreateSubscription(subscription)
 			if err != nil {
 				svc.log.Printf("error creating a new Knative Subscription: [%v] [%v]", subscription, err)
 			}
@@ -405,10 +392,10 @@ func (svc *ProvisionService) persistKnativeSubscriptionOnSuccessProvision(applic
 	}
 
 	// update the current Knative Subscription
-	currentSubscription = updateKnativeSubscription(currentSubscription, defaultBrokerURI, channel, withSpec)
+	currentSubscription = knative.FromSubscription(currentSubscription).Spec(channel, defaultBrokerURI).Build()
 
 	// update the current Knative subscription
-	_, err = svc.messagingClient.Subscriptions(integrationNamespace).Update(currentSubscription)
+	_, err = (*svc.knClient).UpdateSubscription(currentSubscription)
 	if err != nil {
 		svc.log.Printf("error updating the current Knative Subscription: [%v] [%v]", currentSubscription, err)
 	}
@@ -430,134 +417,4 @@ func getSvcByID(services []internal.Service, id internal.ApplicationServiceID) (
 
 func strPtr(str string) *string {
 	return &str
-}
-
-// newKnativeSubscription returns a new Knative Subscription instance.
-func newKnativeSubscription(prefix, namespace, brokerURI string, channel *kneventingapisv1alpha1.Channel, spec knativeSubscriptionSpec) *kneventingapisv1alpha1.Subscription {
-	// format the name prefix
-	prefix = formatPrefix(prefix, generatedNameSeparator, maxPrefixLength)
-
-	// construct the Knative Subscription object
-	subscription := &kneventingapisv1alpha1.Subscription{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Subscription",
-			APIVersion: "messaging.knative.dev/v1alpha1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: prefix,
-			Namespace:    namespace,
-		},
-	}
-
-	// update the Knative Subscription spec
-	spec(subscription, channel, brokerURI)
-
-	// return the updated subscription
-	return subscription
-}
-
-// newKnativeSubscription returns a new Knative Subscription instance.
-func updateKnativeSubscription(subscription *kneventingapisv1alpha1.Subscription, brokerURI string, channel *kneventingapisv1alpha1.Channel, spec knativeSubscriptionSpec) *kneventingapisv1alpha1.Subscription {
-	// update the Knative Subscription spec
-	spec(subscription, channel, brokerURI)
-
-	// return the updated subscription
-	return subscription
-}
-
-type knativeSubscriptionSpec func(*kneventingapisv1alpha1.Subscription, *kneventingapisv1alpha1.Channel, string)
-
-func withSpec(subscription *kneventingapisv1alpha1.Subscription, channel *kneventingapisv1alpha1.Channel, brokerURI string) {
-	subscription.Spec = kneventingapisv1alpha1.SubscriptionSpec{
-		Channel: apicorev1.ObjectReference{
-			Name:       channel.Name,
-			Kind:       channel.Kind,
-			APIVersion: channel.APIVersion,
-		},
-		Subscriber: &knpkgapisv1alpha1.Destination{
-			URI: &knpkgapis.URL{
-				Path: brokerURI, // todo validate
-			},
-		},
-	}
-}
-
-// getKnativeChannelByLabels return a knative Channel fetched via label selectors
-// and based on the labels, the list of channels should have only one item.
-func (svc *ProvisionService) getKnativeChannelByLabels(ns string, labels map[string]string) (*kneventingapisv1alpha1.Channel, error) {
-	// check there are labels
-	if len(labels) == 0 {
-		return nil, errors.New("error no labels are provided")
-	}
-
-	// list channels
-	channelList, err := svc.channelLister.Channels(ns).List(k8spkglabels.SelectorFromSet(labels))
-	if err != nil {
-		svc.log.Printf("error getting channels by labels: %v", err)
-		return nil, err
-	}
-	svc.log.Printf("knative channels fetched: %v", channelList)
-
-	// check channel list length to be 1
-	if channelListLength := len(channelList); channelListLength != 1 {
-		svc.log.Printf("error found %d channels with labels: %v in namespace: %v", channelListLength, labels, ns)
-		return nil, errors.New("error length of channel list is not equal to 1")
-	}
-
-	// return the single channel found on the list
-	return channelList[0], nil
-}
-
-// getKnativeSubscriptionByLabels return a knative Subscription fetched via label selectors
-// and based on the labels, the list of subscriptions should have only one item.
-func (svc *ProvisionService) getKnativeSubscriptionByLabels(ns string, labels map[string]string) (*kneventingapisv1alpha1.Subscription, error) {
-	// check there are labels
-	if len(labels) == 0 {
-		return nil, errors.New("error no labels are provided")
-	}
-
-	// list subscriptions
-	opts := metav1.ListOptions{
-		LabelSelector: k8spkglabels.SelectorFromSet(labels).String(),
-	}
-	subscriptionList, err := svc.messagingClient.Subscriptions(ns).List(opts)
-	if err != nil {
-		svc.log.Printf("error getting subscriptions by labels: %v", err)
-		return nil, err
-	}
-	svc.log.Printf("knative subscriptions fetched: %v", subscriptionList)
-
-	// check subscription list length to be 1
-	if subscriptionListLength := len(subscriptionList.Items); subscriptionListLength != 1 {
-		svc.log.Printf("error found %d subscriptions with labels: %v in namespace: %v", subscriptionListLength, labels, ns)
-		return nil, errors.New("error length of subscription list is not equal to 1")
-	}
-
-	// return the single subscription found on the list
-	return &subscriptionList.Items[0], nil
-}
-
-// getDefaultBrokerURI returns the default broker URI for a given namespace.
-func getDefaultBrokerURI(ns string) string {
-	return fmt.Sprintf("http://default-broker.%s", ns)
-}
-
-// formatPrefix returns a new string for the prefix that is limited in the length, not having special characters, and
-// has the separator appended to it in the end.
-func formatPrefix(prefix, separator string, length int) string {
-	// prepare special characters regex
-	reg, err := regexp.Compile("[^a-z0-9]+")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// limit the prefix length
-	if len(prefix) > length {
-		prefix = prefix[:length]
-	}
-
-	// remove the special characters and append the separator
-	prefix = reg.ReplaceAllString(prefix, "") + separator
-
-	return prefix
 }

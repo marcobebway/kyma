@@ -14,6 +14,7 @@ import (
 	"github.com/kyma-project/kyma/components/application-broker/internal/access"
 	"github.com/kyma-project/kyma/components/application-broker/internal/broker"
 	"github.com/kyma-project/kyma/components/application-broker/internal/config"
+	"github.com/kyma-project/kyma/components/application-broker/internal/knative"
 	"github.com/kyma-project/kyma/components/application-broker/internal/mapping"
 	"github.com/kyma-project/kyma/components/application-broker/internal/nsbroker"
 	"github.com/kyma-project/kyma/components/application-broker/internal/storage"
@@ -25,14 +26,10 @@ import (
 	appCli "github.com/kyma-project/kyma/components/application-operator/pkg/client/clientset/versioned"
 	appInformer "github.com/kyma-project/kyma/components/application-operator/pkg/client/informers/externalversions"
 	"github.com/sirupsen/logrus"
-
 	v1 "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
-
-	kneventingclientset "knative.dev/eventing/pkg/client/clientset/versioned"
-	kneventinginformers "knative.dev/eventing/pkg/client/informers/externalversions"
 )
 
 // informerResyncPeriod defines how often informer will execute relist action. Setting to zero disable resync.
@@ -42,8 +39,8 @@ const informerResyncPeriod = 30 * time.Minute
 func main() {
 	verbose := flag.Bool("verbose", false, "specify if log verbosely loading configuration")
 	flag.Parse()
-	cfg, err := config.Load(*verbose)
-	fatalOnError(err)
+	cfg, err1 := config.Load(*verbose)
+	fatalOnError(err1)
 
 	log := logger.New(&cfg.Logger)
 
@@ -54,21 +51,21 @@ func main() {
 	stopCh := make(chan struct{})
 	cancelOnInterrupt(ctx, stopCh, cancelFunc)
 
-	k8sConfig, err := restclient.InClusterConfig()
-	fatalOnError(err)
+	k8sConfig, err1 := restclient.InClusterConfig()
+	fatalOnError(err1)
 
-	appClient, err := appCli.NewForConfig(k8sConfig)
-	fatalOnError(err)
-	mClient, err := mappingCli.NewForConfig(k8sConfig)
-	fatalOnError(err)
-	scClientSet, err := scCs.NewForConfig(k8sConfig)
-	fatalOnError(err)
-	k8sClient, err := kubernetes.NewForConfig(k8sConfig)
-	fatalOnError(err)
-	knClient, err := kneventingclientset.NewForConfig(k8sConfig)
-	fatalOnError(err)
+	appClient, err1 := appCli.NewForConfig(k8sConfig)
+	fatalOnError(err1)
+	mClient, err1 := mappingCli.NewForConfig(k8sConfig)
+	fatalOnError(err1)
+	scClientSet, err1 := scCs.NewForConfig(k8sConfig)
+	fatalOnError(err1)
+	k8sClient, err1 := kubernetes.NewForConfig(k8sConfig)
+	fatalOnError(err1)
+	knClient, err1 := knative.NewKnativeClient(k8sConfig, log)
+	fatalOnError(err1)
 
-	srv := SetupServerAndRunControllers(cfg, log, stopCh, k8sClient, scClientSet, appClient, mClient, knClient)
+	srv := SetupServerAndRunControllers(cfg, log, stopCh, k8sClient, scClientSet, appClient, mClient, &knClient)
 
 	fatalOnError(srv.Run(ctx, fmt.Sprintf(":%d", cfg.Port)))
 }
@@ -79,7 +76,7 @@ func SetupServerAndRunControllers(cfg *config.Config, log *logrus.Entry, stopCh 
 	scClientSet scCs.Interface,
 	appClient appCli.Interface,
 	mClient mappingCli.Interface,
-	knClient kneventingclientset.Interface,
+	knClient *knative.Client,
 ) *broker.Server {
 
 	// create storage factory
@@ -117,9 +114,6 @@ func SetupServerAndRunControllers(cfg *config.Config, log *logrus.Entry, stopCh 
 	relistRequester := syncer.NewRelistRequester(nsBrokerSyncer, cfg.BrokerRelistDurationWindow, log)
 	siFacade := broker.NewServiceInstanceFacade(scInformersGroup.ServiceInstances().Informer())
 
-	// knative informers
-	knInformers := kneventinginformers.NewSharedInformerFactory(knClient, 0)
-
 	accessChecker := access.New(sFact.Application(), mClient.ApplicationconnectorV1alpha1(), sFact.Instance())
 
 	appSyncCtrl := syncer.New(appInformersGroup.Applications(), sFact.Application(), sFact.Application(), relistRequester, log)
@@ -134,8 +128,7 @@ func SetupServerAndRunControllers(cfg *config.Config, log *logrus.Entry, stopCh 
 	// create broker
 	srv := broker.New(sFact.Application(), sFact.Instance(), sFact.InstanceOperation(), accessChecker,
 		mClient.ApplicationconnectorV1alpha1(), siFacade, mInformersGroup.ApplicationMappings().Lister(), brokerService,
-		log, k8sClient.CoreV1().Namespaces(), knInformers.Messaging().V1alpha1().Channels().Lister(),
-		knClient.MessagingV1alpha1())
+		log, k8sClient.CoreV1().Namespaces(), knClient)
 
 	// start informers
 	scInformerFactory.Start(stopCh)

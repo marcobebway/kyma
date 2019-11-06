@@ -133,7 +133,7 @@ func TestProvisionAsync(t *testing.T) {
 				mockServiceInstanceGetter,
 				clientset.ApplicationconnectorV1alpha1(),
 				mockInstanceStorage,
-				mockOperationIDProvider, spy.NewLogDummy(), nil, nil, nil)
+				mockOperationIDProvider, spy.NewLogDummy(), nil, nil)
 
 			asyncFinished := make(chan struct{}, 0)
 			sut.asyncHook = func() {
@@ -177,7 +177,7 @@ func TestProvisionWhenAlreadyProvisioned(t *testing.T) {
 	mockInstanceStorage.On("Get", fixInstanceID()).Return(instance, nil)
 	defer mockInstanceStorage.AssertExpectations(t)
 
-	sut := NewProvisioner(nil, mockInstanceStorage, mockStateGetter, nil, nil, nil, nil, nil, nil, nil, nil, spy.NewLogDummy(), nil, nil, nil)
+	sut := NewProvisioner(nil, mockInstanceStorage, mockStateGetter, nil, nil, nil, nil, nil, nil, nil, nil, spy.NewLogDummy(), nil, nil)
 	// WHEN
 	actResp, err := sut.Provision(context.Background(), osbContext{}, fixProvisionRequest())
 
@@ -201,7 +201,7 @@ func TestProvisionWhenProvisioningInProgress(t *testing.T) {
 	mockInstanceStorage.On("Get", fixInstanceID()).Return(instance, nil)
 	defer mockInstanceStorage.AssertExpectations(t)
 
-	sut := NewProvisioner(nil, mockInstanceStorage, mockStateGetter, nil, nil, nil, nil, nil, nil, nil, nil, spy.NewLogDummy(), nil, nil, nil) // WHEN
+	sut := NewProvisioner(nil, mockInstanceStorage, mockStateGetter, nil, nil, nil, nil, nil, nil, nil, nil, spy.NewLogDummy(), nil, nil) // WHEN
 	actResp, err := sut.Provision(context.Background(), osbContext{}, fixProvisionRequest())
 
 	// THEN
@@ -314,7 +314,7 @@ func TestProvisionCreatingEventActivation(t *testing.T) {
 				mockServiceInstanceGetter,
 				clientset.ApplicationconnectorV1alpha1(),
 				mockInstanceStorage,
-				mockOperationIDProvider, spy.NewLogDummy(), nil, nil, nil)
+				mockOperationIDProvider, spy.NewLogDummy(), nil, nil)
 
 			asyncFinished := make(chan struct{}, 0)
 			sut.asyncHook = func() {
@@ -399,7 +399,7 @@ func TestProvisionErrorOnGettingServiceInstance(t *testing.T) {
 		mockServiceInstanceGetter,
 		clientset.ApplicationconnectorV1alpha1(),
 		mockInstanceStorage,
-		mockOperationIDProvider, spy.NewLogDummy(), nil, nil, nil)
+		mockOperationIDProvider, spy.NewLogDummy(), nil, nil)
 
 	asyncFinished := make(chan struct{}, 0)
 	sut.asyncHook = func() {
@@ -424,7 +424,7 @@ func TestProvisionErrorOnCheckingIfProvisioned(t *testing.T) {
 	defer mockStateGetter.AssertExpectations(t)
 	mockStateGetter.On("IsProvisioned", fixInstanceID()).Return(false, fixError())
 
-	sut := NewProvisioner(nil, nil, mockStateGetter, nil, nil, nil, nil, nil, nil, nil, nil, spy.NewLogDummy(), nil, nil, nil)
+	sut := NewProvisioner(nil, nil, mockStateGetter, nil, nil, nil, nil, nil, nil, nil, nil, spy.NewLogDummy(), nil, nil)
 	// WHEN
 	_, err := sut.Provision(context.Background(), osbContext{}, fixProvisionRequest())
 
@@ -439,7 +439,7 @@ func TestProvisionErrorOnCheckingIfProvisionInProgress(t *testing.T) {
 	mockStateGetter.On("IsProvisioned", fixInstanceID()).Return(false, nil)
 	mockStateGetter.On("IsProvisioningInProgress", fixInstanceID()).Return(internal.OperationID(""), false, fixError())
 
-	sut := NewProvisioner(nil, nil, mockStateGetter, nil, nil, nil, nil, nil, nil, nil, nil, spy.NewLogDummy(), nil, nil, nil)
+	sut := NewProvisioner(nil, nil, mockStateGetter, nil, nil, nil, nil, nil, nil, nil, nil, spy.NewLogDummy(), nil, nil)
 	// WHEN
 	_, err := sut.Provision(context.Background(), osbContext{}, fixProvisionRequest())
 
@@ -461,7 +461,7 @@ func TestProvisionErrorOnIDGeneration(t *testing.T) {
 	mockOperationIDProvider := func() (internal.OperationID, error) {
 		return "", fixError()
 	}
-	sut := NewProvisioner(nil, nil, mockStateGetter, nil, nil, nil, nil, nil, nil, nil, mockOperationIDProvider, spy.NewLogDummy(), nil, nil, nil)
+	sut := NewProvisioner(nil, nil, mockStateGetter, nil, nil, nil, nil, nil, nil, nil, mockOperationIDProvider, spy.NewLogDummy(), nil, nil)
 	// WHEN
 	_, err := sut.Provision(context.Background(), osbContext{}, fixProvisionRequest())
 	// THEN
@@ -499,7 +499,7 @@ func TestProvisionErrorOnInsertingOperation(t *testing.T) {
 		nil,
 		nil,
 		nil,
-		mockOperationIDProvider, spy.NewLogDummy(), nil, nil, nil)
+		mockOperationIDProvider, spy.NewLogDummy(), nil, nil)
 
 	// WHEN
 	_, err := sut.Provision(context.Background(), osbContext{}, fixProvisionRequest())
@@ -550,7 +550,7 @@ func TestProvisionErrorOnInsertingInstance(t *testing.T) {
 		nil,
 		nil,
 		nil,
-		mockOperationIDProvider, spy.NewLogDummy(), nil, nil, nil)
+		mockOperationIDProvider, spy.NewLogDummy(), nil, nil)
 
 	// WHEN
 	_, err := sut.Provision(context.Background(), osbContext{}, fixProvisionRequest())
@@ -587,7 +587,7 @@ func TestProvisionConflictWhenInstanceIsProvisioned(t *testing.T) {
 		nil,
 		nil,
 		nil,
-		mockOperationIDProvider, spy.NewLogDummy(), nil, nil, nil)
+		mockOperationIDProvider, spy.NewLogDummy(), nil, nil)
 
 	// WHEN
 	_, err := sut.Provision(context.Background(), osbContext{}, fixProvisionRequest())
@@ -627,7 +627,7 @@ func TestProvisionConflictWhenInstanceIsBeingProvisioned(t *testing.T) {
 		nil,
 		nil,
 		nil,
-		mockOperationIDProvider, spy.NewLogDummy(), nil, nil, nil)
+		mockOperationIDProvider, spy.NewLogDummy(), nil, nil)
 
 	// WHEN
 	_, err := sut.Provision(context.Background(), osbContext{}, fixProvisionRequest())

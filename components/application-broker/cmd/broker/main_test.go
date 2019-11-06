@@ -9,6 +9,7 @@ import (
 	"github.com/Azure/open-service-broker-azure/pkg/slice"
 	scfake "github.com/kubernetes-sigs/service-catalog/pkg/client/clientset_generated/clientset/fake"
 	"github.com/kyma-project/kyma/components/application-broker/internal/config"
+	"github.com/kyma-project/kyma/components/application-broker/internal/knative/fake"
 	"github.com/kyma-project/kyma/components/application-broker/internal/storage"
 	"github.com/kyma-project/kyma/components/application-broker/pkg/apis/applicationconnector/v1alpha1"
 	abfake "github.com/kyma-project/kyma/components/application-broker/pkg/client/clientset/versioned/fake"
@@ -24,8 +25,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sfake "k8s.io/client-go/kubernetes/fake"
-
-	kneventingclientsetfake "knative.dev/eventing/pkg/client/clientset/versioned/fake"
 )
 
 const (
@@ -99,7 +98,8 @@ func newTestSuite(t *testing.T) *testSuite {
 		},
 	})
 
-	srv := SetupServerAndRunControllers(&cfg, log.Logger, stopCh, k8sClientSet, scClientSet, appClient, abClientSet, kneventingclientsetfake.NewSimpleClientset())
+	fakeKnClient := fake.NewKnativeClient()
+	srv := SetupServerAndRunControllers(&cfg, log.Logger, stopCh, k8sClientSet, scClientSet, appClient, abClientSet, &fakeKnClient)
 	server := httptest.NewServer(srv.CreateHandler())
 
 	osbClient, err := newOSBClient(fmt.Sprintf("%s/%s", server.URL, namespace))
