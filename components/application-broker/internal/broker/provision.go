@@ -41,7 +41,7 @@ const (
 
 // NewProvisioner creates provisioner
 func NewProvisioner(instanceInserter instanceInserter, instanceGetter instanceGetter, instanceStateGetter instanceStateGetter, operationInserter operationInserter, operationUpdater operationUpdater, accessChecker access.ProvisionChecker, appSvcFinder appSvcFinder, serviceInstanceGetter serviceInstanceGetter, eaClient v1client.ApplicationconnectorV1alpha1Interface, iStateUpdater instanceStateUpdater,
-	operationIDProvider func() (internal.OperationID, error), log logrus.FieldLogger, namespaces typedcorev1.NamespaceInterface, knClient *knative.Client) *ProvisionService {
+	operationIDProvider func() (internal.OperationID, error), log logrus.FieldLogger, namespaces typedcorev1.NamespaceInterface, knClient knative.Client) *ProvisionService {
 	return &ProvisionService{
 		instanceInserter:      instanceInserter,
 		instanceGetter:        instanceGetter,
@@ -75,7 +75,7 @@ type ProvisionService struct {
 	accessChecker         access.ProvisionChecker
 	serviceInstanceGetter serviceInstanceGetter
 	namespaces            typedcorev1.NamespaceInterface
-	knClient              *knative.Client
+	knClient              knative.Client
 
 	mu sync.Mutex
 
@@ -362,13 +362,13 @@ func (svc *ProvisionService) persistKnativeSubscriptionOnSuccessProvision(applic
 	defaultBrokerURI := knative.GetDefaultBrokerURI(ns)
 
 	// get the Knative channel by labels
-	channel, err := (*svc.knClient).GetChannelByLabels(integrationNamespace, labels)
+	channel, err := svc.knClient.GetChannelByLabels(integrationNamespace, labels)
 	if err != nil {
 		return err
 	}
 
 	// try to get the knative subscription in case it was created before by a previous provisioning request
-	currentSubscription, err := (*svc.knClient).GetSubscriptionByLabels(ns, labels)
+	currentSubscription, err := svc.knClient.GetSubscriptionByLabels(ns, labels)
 	switch {
 	// the subscription does not exist before, create a new one
 	case apierrors.IsNotFound(err):
@@ -377,7 +377,7 @@ func (svc *ProvisionService) persistKnativeSubscriptionOnSuccessProvision(applic
 			subscription := knative.Subscription(knSubscriptionNamePrefix, ns).Spec(channel, defaultBrokerURI).Build()
 
 			// create the Knative subscription
-			_, err = (*svc.knClient).CreateSubscription(subscription)
+			_, err = svc.knClient.CreateSubscription(subscription)
 			if err != nil {
 				svc.log.Printf("error creating a new Knative Subscription: [%v] [%v]", subscription, err)
 			}
@@ -395,7 +395,7 @@ func (svc *ProvisionService) persistKnativeSubscriptionOnSuccessProvision(applic
 	currentSubscription = knative.FromSubscription(currentSubscription).Spec(channel, defaultBrokerURI).Build()
 
 	// update the current Knative subscription
-	_, err = (*svc.knClient).UpdateSubscription(currentSubscription)
+	_, err = svc.knClient.UpdateSubscription(currentSubscription)
 	if err != nil {
 		svc.log.Printf("error updating the current Knative Subscription: [%v] [%v]", currentSubscription, err)
 	}

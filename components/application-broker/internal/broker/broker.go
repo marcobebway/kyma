@@ -110,7 +110,7 @@ func New(applicationFinder appFinder,
 	brokerService *NsBrokerService,
 	log *logrus.Entry,
 	namespaces clientgocorev1.NamespaceInterface,
-	knClient *knative.Client) *Server {
+	knClient knative.Client) *Server {
 
 	idpRaw := idprovider.New()
 	idp := func() (internal.OperationID, error) {

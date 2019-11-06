@@ -62,10 +62,10 @@ func main() {
 	fatalOnError(err1)
 	k8sClient, err1 := kubernetes.NewForConfig(k8sConfig)
 	fatalOnError(err1)
-	knClient, err1 := knative.NewKnativeClient(k8sConfig, log)
+	knClient, err1 := knative.NewKnativeClient(k8sConfig)
 	fatalOnError(err1)
 
-	srv := SetupServerAndRunControllers(cfg, log, stopCh, k8sClient, scClientSet, appClient, mClient, &knClient)
+	srv := SetupServerAndRunControllers(cfg, log, stopCh, k8sClient, scClientSet, appClient, mClient, knClient)
 
 	fatalOnError(srv.Run(ctx, fmt.Sprintf(":%d", cfg.Port)))
 }
@@ -76,7 +76,7 @@ func SetupServerAndRunControllers(cfg *config.Config, log *logrus.Entry, stopCh 
 	scClientSet scCs.Interface,
 	appClient appCli.Interface,
 	mClient mappingCli.Interface,
-	knClient *knative.Client,
+	knClient knative.Client,
 ) *broker.Server {
 
 	// create storage factory
