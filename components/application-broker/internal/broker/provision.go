@@ -372,23 +372,18 @@ func (svc *ProvisionService) persistKnativeSubscriptionOnSuccessProvision(applic
 	switch {
 	// the subscription does not exist before, create a new one
 	case apierrors.IsNotFound(err):
-		{
-			// create the Knative subscription
-			subscription := knative.Subscription(knSubscriptionNamePrefix, ns).Spec(channel, defaultBrokerURI).Build()
+		// create the Knative subscription
+		subscription := knative.Subscription(knSubscriptionNamePrefix, ns).Spec(channel, defaultBrokerURI).Build()
 
-			// create the Knative subscription
-			_, err = svc.knClient.CreateSubscription(subscription)
-			if err != nil {
-				svc.log.Printf("error creating a new Knative Subscription: [%v] [%v]", subscription, err)
-			}
-			return err
+		_, err = svc.knClient.CreateSubscription(subscription)
+		if err != nil {
+			svc.log.Printf("error creating a new Knative Subscription: [%v] [%v]", subscription, err)
 		}
+		return err
 	// unexpected error happened while getting the current Knative subscription
 	case err != nil:
-		{
-			svc.log.Printf("failed to get the current Knative Subscription by labels: %v with error: %v", labels, err)
-			return err
-		}
+		svc.log.Printf("failed to get the current Knative Subscription by labels: %v with error: %v", labels, err)
+		return err
 	}
 
 	// update the current Knative Subscription

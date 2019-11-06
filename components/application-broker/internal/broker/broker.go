@@ -131,7 +131,7 @@ func New(applicationFinder appFinder,
 			appEnabledChecker: enabledChecker,
 		},
 		provisioner:   NewProvisioner(instStorage, instStorage, stateService, opStorage, opStorage, accessChecker, applicationFinder, serviceInstanceGetter, eaClient, instStorage, idp, log, namespaces, knClient),
-		deprovisioner: NewDeprovisioner(instStorage, stateService, opStorage, opStorage, idp, log),
+		deprovisioner: NewDeprovisioner(instStorage, stateService, opStorage, opStorage, idp, knClient, log),
 		binder: &bindService{
 			appSvcFinder: applicationFinder,
 		},
