@@ -43,7 +43,7 @@ type (
 	}
 	operationUpdater interface {
 		UpdateState(iID internal.InstanceID, opID internal.OperationID, state internal.OperationState) error
-		UpdateStateDesc(iID internal.InstanceID, opID internal.OperationID, state internal.OperationState, desc *string) error
+		UpdateStateDesc(iID internal.InstanceID, opID internal.OperationID, state internal.OperationState, desc string) error
 	}
 	operationRemover interface {
 		Remove(iID internal.InstanceID, opID internal.OperationID) error

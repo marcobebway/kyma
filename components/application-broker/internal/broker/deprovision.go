@@ -125,7 +125,7 @@ func (svc *DeprovisionService) do(iID internal.InstanceID, opID internal.Operati
 
 	// currently, there is no any action, but it is a place for future - any deprovisioning action should be put here
 
-	if err := svc.operationUpdater.UpdateStateDesc(iID, opID, opState, &opDesc); err != nil {
+	if err := svc.operationUpdater.UpdateStateDesc(iID, opID, opState, opDesc); err != nil {
 		svc.log.Errorf("Cannot update state for instance [%s]: [%v]\n", iID, err)
 		return
 	}

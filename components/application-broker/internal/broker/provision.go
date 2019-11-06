@@ -234,7 +234,7 @@ func (svc *ProvisionService) do(iID internal.InstanceID, opID internal.Operation
 		svc.log.Errorf("Cannot update state of the stored instance [%s]: [%v]\n", iID, err)
 	}
 
-	if err := svc.operationUpdater.UpdateStateDesc(iID, opID, opState, &opDesc); err != nil {
+	if err := svc.operationUpdater.UpdateStateDesc(iID, opID, opState, opDesc); err != nil {
 		svc.log.Errorf("Cannot update state for ServiceInstance [%s]: [%v]\n", iID, err)
 		return
 	}
