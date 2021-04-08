@@ -101,7 +101,7 @@ This table lists all the possible parameters of a given resource together with t
 | ---------------------------------------- | :------------: | ---------|
 | **metadata.name**              |      Yes       | Specifies the name of the CR.                 |
 | **metadata.namespace**     |       No       | Defines the Namespace in which the CR is available. It is set to `default` unless you specify otherwise.      |
-| **spec.env**                             |       No       | Specifies environment variables you need to export for the Function.  |
+| **spec.env**                             |       No       | Specifies environment variables you need to export for the Function. You can export them either directly in the Function CR's spec or define them in a [ConfigMap](#configuration-environment-variables-define-environment-variables-in-a-config-map). |
 | **spec.deps**                            |       No       | Specifies the Function's dependencies.  |
 | **spec.labels**                          |       No       | Specifies the Function's Pod labels.    |
 | **spec.minReplicas**                     |       No       | Defines the minimum number of Function's Pods to run at a time.  |
@@ -114,7 +114,7 @@ This table lists all the possible parameters of a given resource together with t
 | **spec.buildResources.limits.memory**         |       No       | Defines the maximum amount of memory available for the Job's Pod to use.      |
 | **spec.buildResources.requests.cpu**          |       No       | Specifies the number of CPUs requested by the build Job's Pod to operate.       |
 | **spec.buildResources.requests.memory**       |       No       | Specifies the amount of memory requested by the build Job's Pod to operate.               |
-| **spec.runtime**                         |       No       | Specifies the runtime of the Function. The available values are `nodejs12`, `nodejs10`, and `python38`. It is set to `nodejs12` unless specified otherwise.  |
+| **spec.runtime**                         |       No       | Specifies the runtime of the Function. The available values are `nodejs12`, `python38` and deprecated `nodejs10`. It is set to `nodejs12` unless specified otherwise.  |
 | **spec.type**                          |      No       | Defines that you use a Git repository as the source of Function's code and dependencies. It must be set to `git`. |
 | **spec.source**                          |      Yes       | Provides the Function's full source code or the name of the Git directory in which the code and dependencies are stored.     |
 | **spec.baseDir**                          |      No       | Specifies the relative path to the Git directory that contains the source code from which the Function will be built​. |

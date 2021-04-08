@@ -32,6 +32,7 @@ headerRewrite:
   workloadLabel: oathkeeper
 hpa:
   oathkeeper:
+    enabled: true
     minReplicas: 1
     maxReplicas: 3
     cpu: 80
@@ -45,6 +46,7 @@ hpa:
         name: cpu
         targetAverageUtilization: 80
   hydra:
+    enabled: true
     minReplicas: 1
     maxReplicas: 3
     cpu: 80
@@ -61,8 +63,10 @@ hpa:
 # Maintenance options
 maintenance:
   image:
-    name: eu.gcr.io/kyma-project/incubator/develop/k8s-tools
-    tag: "20201023-5de446cf"
+    name: eu.gcr.io/kyma-project/tpi/k8s-tools
+    tag: "20210407-86c769bd"
+  podSecurityPolicy:
+    enabled: true
 
 # Overrides for the Hydra chart
 hydra:
@@ -111,10 +115,11 @@ hydra:
     globalAccess: true
     config:
       hydraSecret: "ory-hydra-credentials"
+
 # Overrides for the Oathkeeper chart
 oathkeeper:
   kubectlJob:
-    image: eu.gcr.io/kyma-project/incubator/develop/k8s-tools:20201023-5de446cf
+    image: eu.gcr.io/kyma-project/tpi/k8s-tools:20210407-86c769bd
   oathkeeper:
     config:
       authenticators:

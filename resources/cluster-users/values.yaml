@@ -4,10 +4,19 @@ tests:
     after-upgrade: true
   enabled: true
   image:
-    name: eu.gcr.io/kyma-project/incubator/develop/k8s-tools
-    version: 20201023-5de446cf
+    name: eu.gcr.io/kyma-project/tpi/k8s-tools
+    version: 20210407-86c769bd
   env:
     namespace: default
+  securityContext:
+    runAsUser: 65534
+    runAsNonRoot: true
+    runAsGroup: 65534
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+      - ALL
+    privileged: false
 
 bindings:
   kymaEssentials:
@@ -98,4 +107,5 @@ global:
     domainName: "kyma.local"
 
 users:
+  adminName: "admin@kyma.cx"
   adminGroup:

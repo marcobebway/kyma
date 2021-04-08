@@ -24,12 +24,12 @@ spec:
 {{- if and .Values.rbac.create .Values.serviceAccount.create }}
       serviceAccountName: {{ template "prometheus-node-exporter.serviceAccountName" . }}
 {{- end }}
-{{- if .Values.securityContext }}
+{{- if .Values.podSecurityContext }}
       securityContext:
-{{ toYaml .Values.securityContext | indent 8 }}
+{{ toYaml .Values.podSecurityContext | indent 8 }}
 {{- end }}
-{{- if .Values.priorityClassName }}
-      priorityClassName: {{ .Values.priorityClassName }}
+{{- if or .Values.priorityClassName .Values.global.priorityClassName }}
+      priorityClassName: {{ coalesce .Values.priorityClassName .Values.global.priorityClassName }}
 {{- end }}
       containers:
         - name: node-exporter
@@ -38,6 +38,7 @@ spec:
           args:
             - --path.procfs=/host/proc
             - --path.sysfs=/host/sys
+            - --path.rootfs=/host/root
             - --web.listen-address=$(HOST_IP):{{ .Values.service.port }}
 {{- if .Values.extraArgs }}
 {{ toYaml .Values.extraArgs | indent 12 }}
@@ -66,12 +67,20 @@ spec:
               port: {{ .Values.service.port }}
           resources:
 {{ toYaml .Values.resources | indent 12 }}
+{{- if .Values.securityContext }}
+          securityContext:
+{{ toYaml .Values.securityContext | indent 12 }}
+{{- end }}
           volumeMounts:
             - name: proc
               mountPath: /host/proc
               readOnly:  true
             - name: sys
               mountPath: /host/sys
+              readOnly: true
+            - name: root
+              mountPath: /host/root
+              mountPropagation: HostToContainer
               readOnly: true
             {{- if .Values.extraHostVolumeMounts }}
             {{- range $_, $mount := .Values.extraHostVolumeMounts }}
@@ -128,6 +137,9 @@ spec:
         - name: sys
           hostPath:
             path: /sys
+        - name: root
+          hostPath:
+            path: /
         {{- if .Values.extraHostVolumeMounts }}
         {{- range $_, $mount := .Values.extraHostVolumeMounts }}
         - name: {{ $mount.name }}

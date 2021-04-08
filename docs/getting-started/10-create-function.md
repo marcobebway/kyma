@@ -7,7 +7,7 @@ Let's now repeat the microservice flow for the Function. This guide shows how yo
 
 ## Reference
 
-This guide demonstrates how [Serverless](/components/event-mesh/) works in Kyma. It allows you to build, run, and manage serverless applications called Functions. You can bind them to other services, subscribe business events from external solutions to them, and trigger the Function's logic upon receiving a given event type.
+This guide demonstrates how [Serverless](/components/serverless/) works in Kyma. It allows you to build, run, and manage serverless applications called Functions. You can bind them to other services, subscribe business events from external solutions to them, and trigger the Function's logic upon receiving a given event type.
 
 ## Steps
 
@@ -46,7 +46,7 @@ Follows these steps:
 
 1. From the drop-down list in the top navigation panel, select the `orders-service` Namespace.
 
-2. Go to **Development** > **Functions** in the left navigation panel and select **Create Function**.
+2. Go to **Workloads** > **Functions** in the left navigation panel and select **Create Function**.
 
 3. In the pop-up box, provide the `orders-function` name. Add the `app=orders-function` and `example=orders-function` labels, and select **Create** to confirm the changes.
 
