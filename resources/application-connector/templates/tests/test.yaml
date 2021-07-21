@@ -42,11 +42,13 @@ spec:
           imagePullPolicy: {{ .Values.tests.application_connector_tests.image.pullPolicy }}
           env:
           - name: NAMESPACE
-            value: {{ .Values.global.namespace }}
+            value: {{ .Values.global.integrationNamespace }}
           - name: SKIP_SSL_VERIFY
             value: {{ .Values.tests.application_connector_tests.skipSslVerify | quote }}
-          - name: CENTRAL
-            value: {{ .Values.tests.application_connector_tests.connector_service.central | quote }}
+          securityContext:
+            runAsUser: {{ .Values.global.podSecurityPolicy.runAsUser }}
+            privileged: {{ .Values.global.podSecurityPolicy.privileged }}
+            allowPrivilegeEscalation: {{ .Values.global.podSecurityPolicy.allowPrivilegeEscalation }}
       restartPolicy: Never
 {{- end }}
 {{- end }}

@@ -1,3 +1,4 @@
+{{- if .Capabilities.APIVersions.Has "ui.kyma-project.io/v1alpha1" }}
 apiVersion: "ui.kyma-project.io/v1alpha1"
 kind: ClusterMicroFrontend
 metadata:
@@ -7,14 +8,14 @@ metadata:
 spec:
   displayName: API Rules
   version: v1
-  category: Configuration
+  category: Discovery and Network
   placement: namespace
   viewBaseUrl: "https://core-ui.{{ js .Values.global.ingress.domainName }}"
   navigationNodes:
     - label: API Rules
       navigationPath: apirules
       viewUrl: "/apirules"
-      order: -3
+      order: 1
       viewGroup: "_core_ui_"
       keepSelectedForChildren: true
       navigationContext: "apirules"
@@ -41,3 +42,4 @@ spec:
       showInNavigation: false
       viewGroup: _core_ui_
       viewUrl: /apirules/edit/:apiName
+{{ end }}

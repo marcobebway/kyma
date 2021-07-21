@@ -11,7 +11,6 @@ metadata:
 rules:
 - apiGroups:
     - "authentication.kyma-project.io"
-    - "gateway.kyma-project.io"
     - "ui.kyma-project.io"
     - "rbac.authorization.k8s.io"
   resources:
@@ -152,8 +151,6 @@ aggregationRule:
   - matchLabels:
       rbac.authorization.kyma-project.io/aggregate-to-kyma-k8s-view: "true"
   - matchLabels:
-      rbac.authorization.kyma-project.io/aggregate-to-kyma-knative-eventing-view: "true"
-  - matchLabels:
       rbac.authorization.kyma-project.io/aggregate-to-monitoring-view: "true"
   - matchLabels:
       rbac.authorization.kyma-project.io/aggregate-to-addons-view: "true"
@@ -210,8 +207,6 @@ aggregationRule:
       rbac.authorization.kyma-project.io/aggregate-to-kyma-crd-edit: "true"
   - matchLabels:
       rbac.authorization.kyma-project.io/aggregate-to-kyma-istio-edit: "true"
-  - matchLabels:
-      rbac.authorization.kyma-project.io/aggregate-to-kyma-knative-eventing-edit: "true"
   - matchLabels:
       rbac.authorization.kyma-project.io/aggregate-to-monitoring-edit: "true"
   - matchLabels:
@@ -271,8 +266,6 @@ aggregationRule:
   - matchLabels:
       rbac.authorization.kyma-project.io/aggregate-to-kyma-istio-admin: "true"
   - matchLabels:
-      rbac.authorization.kyma-project.io/aggregate-to-kyma-knative-eventing-admin: "true"
-  - matchLabels:
       rbac.authorization.kyma-project.io/aggregate-to-monitoring-admin: "true"
   - matchLabels:
       rbac.authorization.kyma-project.io/aggregate-to-addons-admin: "true"
@@ -320,8 +313,6 @@ aggregationRule:
       rbac.authorization.kyma-project.io/aggregate-to-kyma-api-admin: "true"
   - matchLabels:
       rbac.authorization.kyma-project.io/aggregate-to-kyma-istio-admin: "true"
-  - matchLabels:
-      rbac.authorization.kyma-project.io/aggregate-to-kyma-knative-eventing-admin: "true"
   - matchLabels:
       rbac.authorization.kyma-project.io/aggregate-to-monitoring-admin: "true"
   - matchLabels:
@@ -428,12 +419,14 @@ roleRef:
   kind: ClusterRole
   name: kyma-essentials
 subjects:
+{{ if .Values.users.bindStaticUsers }}
 - kind: User
   name: read-only-user@kyma.cx
   apiGroup: rbac.authorization.k8s.io
 - kind: User
   name: developer@kyma.cx
   apiGroup: rbac.authorization.k8s.io
+{{ end }}
 {{ if .Values.global.kymaRuntime.developerGroup }}
 - kind: Group
   name: {{ .Values.global.kymaRuntime.developerGroup }}
@@ -466,6 +459,7 @@ roleRef:
   kind: ClusterRole
   name: kyma-view
 subjects:
+{{ if .Values.users.bindStaticUsers }}
 - kind: User
   name: user1@kyma.cx
   apiGroup: rbac.authorization.k8s.io
@@ -475,6 +469,7 @@ subjects:
 - kind: User
   name: read-only-user@kyma.cx
   apiGroup: rbac.authorization.k8s.io
+{{ end }}  
 {{ if .Values.global.kymaRuntime.operatorGroup }}
 - kind: Group
   name: {{ .Values.global.kymaRuntime.operatorGroup }}
@@ -502,9 +497,11 @@ roleRef:
   kind: ClusterRole
   name: kyma-admin
 subjects:
+{{ if .Values.users.bindStaticUsers }}
 - kind: User
-  name: admin@kyma.cx
+  name: {{ .Values.users.adminName }}
   apiGroup: rbac.authorization.k8s.io
+{{ end }}
 {{ if .Values.users.adminGroup }}
 - kind: Group
   name: {{ .Values.users.adminGroup }}
@@ -537,9 +534,11 @@ roleRef:
   kind: ClusterRole
   name: kyma-namespace-admin-essentials
 subjects:
+{{ if .Values.users.bindStaticUsers }}
 - kind: User
   name: namespace.admin@kyma.cx
   apiGroup: rbac.authorization.k8s.io
+{{ end }}
 - kind: Group
   name: {{ .Values.global.kymaRuntime.namespaceAdminGroup }}
   apiGroup: rbac.authorization.k8s.io

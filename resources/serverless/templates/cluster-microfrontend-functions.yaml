@@ -1,3 +1,4 @@
+{{- if .Capabilities.APIVersions.Has "ui.kyma-project.io/v1alpha1" }}
 {{- if .Values.clusterMicroFrontend.enabled }}
 apiVersion: "ui.kyma-project.io/v1alpha1"
 kind: ClusterMicroFrontend
@@ -8,14 +9,14 @@ metadata:
 spec:
   displayName: Functions
   version: v1
-  category: Development
+  category: Workloads
   placement: namespace
   viewBaseUrl: 'https://core-ui.{{ js .Values.global.ingress.domainName }}'
   navigationNodes:
     - label: Functions
       navigationPath: functions
       viewUrl: '/lambdas'
-      order: 1
+      order: -1
       viewGroup: "_core_ui_"
       requiredBackendModules:
         - serverless
@@ -29,4 +30,5 @@ spec:
       viewUrl: '/lambda/:lambda'
       showInNavigation: false
       viewGroup: "_core_ui_"
+{{ end }}
 {{- end }}

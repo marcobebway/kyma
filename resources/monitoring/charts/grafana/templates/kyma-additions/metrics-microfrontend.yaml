@@ -1,11 +1,12 @@
 {{- /*
   Customization: This file is added for UI.
 */ -}}
+{{- if .Capabilities.APIVersions.Has "ui.kyma-project.io/v1alpha1" }}
 {{- if .Values.kyma.console.enabled }}
 apiVersion: "ui.kyma-project.io/v1alpha1"
 kind: ClusterMicroFrontend
 metadata:
-  name: {{ template "grafana.name" . }}-metrics
+  name: {{ template "grafana.fullname" . }}-metrics
   labels:
     {{- include "grafana.labels" . | nindent 4 }}
 spec:
@@ -20,4 +21,5 @@ spec:
       viewUrl: ''
       externalLink: https://grafana.{{ js .Values.global.ingress.domainName }}
       order: 1
+{{ end }}
 {{- end }}

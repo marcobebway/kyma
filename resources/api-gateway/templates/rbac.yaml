@@ -6,7 +6,7 @@ metadata:
   namespace:  {{ .Release.Namespace }}
 ---
 kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: {{ include "api-gateway.name" . }}-role
   namespace:  {{ .Release.Namespace }}
@@ -20,9 +20,16 @@ rules:
   - apiGroups: ["oathkeeper.ory.sh"]
     resources: ["rules"]
     verbs: ["create", "delete", "get", "patch", "list", "watch", "update"]
+{{- if .Values.podSecurityPolicy.enabled }}
+  - apiGroups: ["extensions","policy"]
+    resources: ["podsecuritypolicies"]
+    verbs: ["use"]
+    resourceNames: 
+      - {{ template "api-gateway.fullname" . }}
+{{- end }}
 ---
 kind: ClusterRoleBinding
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: {{ include "api-gateway.name" . }}-role-binding
   namespace:  {{ .Release.Namespace }}

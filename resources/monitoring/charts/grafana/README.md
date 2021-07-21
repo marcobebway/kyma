@@ -9,9 +9,9 @@ In Kyma, you can find these dashboards under [grafana](../../templates/grafana/)
 Some of the available dashboards:
 
 * **Istio** - Displays Istio metrics for services (HTTP and TCP) as well as the Service Mesh. Find the configuration of this dashboard in [this](../../../../resources/istio/templates/monitoring/grafana/dashboards/istio-mesh.yaml) file.
-* **Nodes** - Displays information pertaining to Kubernetes nodes utilization. Find the configuration of this dashboard in [this](../../templates/grafana/dashboards/nodes.yaml) file.
-* **Pods** - Displays Pod metrics such as CPU and Memory. Find the configuration of this dashboard in [this](../../templates/grafana/dashboards/pods.yaml) file.
-* **StatefulSet** - Displays Kubernetes StatefulSet metrics such as replica count, CPU and Memory. Find the configuration of this dashboard in [this](../../templates/grafana/dashboards/statefulset.yaml) file.
+* **Nodes** - Displays information pertaining to Kubernetes nodes utilization. Find the configuration of this dashboard in [this](../../templates/grafana/dashboards-1.14/nodes.yaml) file.
+* **Pods** - Displays Pod metrics such as CPU and Memory. Find the configuration of this dashboard in [this](../../templates/grafana/kyma-dashboards/pods.yaml) file.
+* **StatefulSet** - Displays Kubernetes StatefulSet metrics such as replica count, CPU and Memory. Find the configuration of this dashboard in [this](../../templates/grafana/dashboards-1.14/statefulset.yaml) file.
 
 ## Add a dashboard to Kyma
 
@@ -40,12 +40,12 @@ To add a dashboard to Kyma:
 
 1. Create or modify the dashboard using the Grafana UI.
 2. Export the dashboard to a JSON format file. Create a ConfigMap file having this JSON in the `data` field. Name the file following this convention: `{dashboard_name}.yaml`.
-3. Clone the Kyma [master branch](https://github.com/kyma-project/kyma).
+3. Clone the Kyma [`main` branch](https://github.com/kyma-project/kyma).
 4. Copy the YAML file to the directory **[kyma-dashboards](../../templates/grafana/kyma-dashboards/)** of your local installation.
 5. Install Kyma locally and open it in a browser at https://console.kyma.local.
 6. Access the Grafana console from Kyma by clicking **Administration > Diagnostics > Status & Metrics** in the left navigation.  
 7. Sign in and check if the newly added dashboard is deployed.  
-8. Create a pull request following the [GitHub workflow](https://github.com/kyma-project/community/blob/master/contributing/03-git-workflow.md) defined for Kyma.
+8. Create a pull request following the [GitHub workflow](https://github.com/kyma-project/community/blob/main/contributing/03-git-workflow.md) defined for Kyma.
 
 ## Add a custom dashboard in Grafana
 

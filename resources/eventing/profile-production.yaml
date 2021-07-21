@@ -1,0 +1,27 @@
+controller:
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1Gi
+    requests:
+      cpu: 400m
+      memory: 512Mi
+  publisherProxy:
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 400m
+        memory: 256Mi
+
+
+nats:
+  clusterSize: 3
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1Gi
+    requests:
+      cpu: 400m
+      memory: 512Mi

@@ -10,6 +10,7 @@ console:
 
 global:
   isLocalEnv: false
+  isBEBEnabled: true
   knative:
     false
     # Change value below to your own GitHub user name if you want point to documentation sources from your fork
@@ -21,8 +22,6 @@ global:
     gateway:
       name: kyma-gateway
   ui_acceptance_tests:
-    version: ebf06dc1
+    version: "93bb0fcb"
   console_backend_service:
-    version: "9415be28"
-  console_backend_service_test:
-    version: "PR-9848"
+    version: "e44666e8"

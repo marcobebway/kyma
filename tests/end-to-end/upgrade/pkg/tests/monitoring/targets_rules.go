@@ -10,12 +10,13 @@ import (
 	"time"
 
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/client/versioned/typed/monitoring/v1"
-	"github.com/kyma-project/kyma/tests/end-to-end/upgrade/pkg/tests/monitoring/prom"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+
+	"github.com/kyma-project/kyma/tests/end-to-end/upgrade/pkg/tests/monitoring/prom"
 )
 
 const prometheusURL = "http://monitoring-prometheus.kyma-system:9090"
@@ -41,10 +42,14 @@ func NewTargetsAndRulesTest(k8sCli kubernetes.Interface, monitoringCli *monitori
 	}
 }
 
-// CreateResources checks that all targets and rules are healthy before upgrade
+// CreateResources checks that all targets and rules are healthy and no alerts are firing before upgrade
 func (t TargetsAndRulesTest) CreateResources(stop <-chan struct{}, log logrus.FieldLogger, namespace string) error {
 	log.Println("checking that monitoring pods are ready")
 	if err := t.testPodsAreReady(); err != nil {
+		return err
+	}
+	log.Println("checking that all targets are healthy before upgrade")
+	if err := t.testTargetsAreHealthy(); err != nil {
 		return err
 	}
 	log.Println("checking that all scrape pools have active targets before upgrade")
@@ -55,13 +60,21 @@ func (t TargetsAndRulesTest) CreateResources(stop <-chan struct{}, log logrus.Fi
 	if err := t.testRulesAreHealthy(); err != nil {
 		return err
 	}
+	log.Println("checking that no alerts are firing before upgrade")
+	if err := t.checkAlerts(); err != nil {
+		return err
+	}
 	return nil
 }
 
-// CreateResources checks that all targets and rules are healthy after upgrade
+// TestResources checks that all targets and rules are healthy and no alerts are firing after upgrade
 func (t TargetsAndRulesTest) TestResources(stop <-chan struct{}, log logrus.FieldLogger, namespace string) error {
 	log.Println("checking that monitoring pods are ready")
 	if err := t.testPodsAreReady(); err != nil {
+		return err
+	}
+	log.Println("checking that all targets are healthy after upgrade")
+	if err := t.testTargetsAreHealthy(); err != nil {
 		return err
 	}
 	log.Println("checking that all scrape pools have active targets after upgrade")
@@ -70,6 +83,10 @@ func (t TargetsAndRulesTest) TestResources(stop <-chan struct{}, log logrus.Fiel
 	}
 	log.Println("checking that all rules are healthy after upgrade")
 	if err := t.testRulesAreHealthy(); err != nil {
+		return err
+	}
+	log.Println("checking that no alerts are firing after upgrade")
+	if err := t.checkAlerts(); err != nil {
 		return err
 	}
 	return nil
@@ -199,11 +216,9 @@ func (t TargetsAndRulesTest) testTargetsAreHealthy() error {
 
 }
 
-func shouldIgnoreTarget(target prom.Labels) bool {
+func shouldIgnoreTarget(target prom.TargetLabels) bool {
 	jobsToBeIgnored := []string{
 		// Note: These targets will be tested here: https://github.com/kyma-project/kyma/issues/6457
-		"knative-eventing/knative-eventing-event-mesh-dashboard-broker",
-		"knative-eventing/knative-eventing-event-mesh-dashboard-httpsource",
 	}
 
 	podsToBeIgnored := []string{
@@ -211,7 +226,7 @@ func shouldIgnoreTarget(target prom.Labels) bool {
 		"-testsuite-",
 		"test",
 		"nodejs12-",
-		"nodejs10-",
+		"nodejs14-",
 		"upgrade",
 		// Ignore the pods created by jobs which are executed after installation of control-plane.
 		"compass-migration",
@@ -342,8 +357,6 @@ func shouldIgnoreServiceMonitor(serviceMonitorName string) bool {
 func shouldIgnorePodMonitor(podMonitorName string) bool {
 	var podMonitorsToBeIgnored = []string{
 		// The targets scraped by these podmonitors will be tested here: https://github.com/kyma-project/kyma/issues/6457
-		"knative-eventing-event-mesh-dashboard-broker",
-		"knative-eventing-event-mesh-dashboard-httpsource",
 	}
 
 	for _, pm := range podMonitorsToBeIgnored {
@@ -364,7 +377,7 @@ func (t TargetsAndRulesTest) testRulesAreHealthy() error {
 			tick.Stop()
 			return errors.Errorf(timeoutMessage)
 		case <-tick.C:
-			var resp prom.AlertResponse
+			var resp prom.RulesResponse
 			url := fmt.Sprintf("%s/api/v1/rules", prometheusURL)
 			respBody, statusCode, err := t.doGet(url)
 			if err != nil {
@@ -377,9 +390,9 @@ func (t TargetsAndRulesTest) testRulesAreHealthy() error {
 				return errors.Errorf("error in response status with ErrorType: %s.\nError: %s", resp.ErrorType, resp.Error)
 			}
 			allRulesAreHealthy := true
-			alertDataGroups := resp.Data.Groups
+			rulesGroups := resp.Data.Groups
 			timeoutMessage = ""
-			for _, group := range alertDataGroups {
+			for _, group := range rulesGroups {
 				for _, rule := range group.Rules {
 					if rule.Health != "ok" {
 						allRulesAreHealthy = false
@@ -393,6 +406,68 @@ func (t TargetsAndRulesTest) testRulesAreHealthy() error {
 		}
 	}
 
+}
+
+func (t TargetsAndRulesTest) checkAlerts() error {
+	timeout := time.After(3 * time.Minute)
+	tick := time.NewTicker(5 * time.Second)
+	var timeoutMessage string
+	for {
+		select {
+		case <-timeout:
+			tick.Stop()
+			return errors.Errorf(timeoutMessage)
+		case <-tick.C:
+			var resp prom.AlertsResponse
+			url := fmt.Sprintf("%s/api/v1/alerts", prometheusURL)
+			respBody, statusCode, err := t.doGet(url)
+			if err != nil {
+				return errors.Wrap(err, "cannot query alerts")
+			}
+			if err := json.Unmarshal([]byte(respBody), &resp); err != nil {
+				return errors.Wrapf(err, "error unmarshalling response. Response body: %s", respBody)
+			}
+			if statusCode != 200 || resp.Status != "success" {
+				return errors.Errorf("error in response status with ErrorType: %s.\nError: %s", resp.ErrorType, resp.Error)
+			}
+			noFiringAlerts := true
+			alerts := resp.Data.Alerts
+			timeoutMessage = ""
+			for _, alert := range alerts {
+				if shouldIgnoreAlert(alert) {
+					continue
+				}
+				if alert.State == "firing" {
+					noFiringAlerts = false
+					timeoutMessage += fmt.Sprintf("Alert with name=%s is firing\n", alert.Labels.AlertName)
+				}
+			}
+			if noFiringAlerts {
+				return nil
+			}
+		}
+	}
+}
+
+func shouldIgnoreAlert(alert prom.Alert) bool {
+	if alert.Labels.Severity != "critical" {
+		return true
+	}
+
+	var alertNamesToIgnore = []string{
+		// Watchdog is an alert meant to ensure that the entire alerting pipeline is functional, so it should always be firing,
+		"Watchdog",
+		// Scrape limits can be exceeded on long-running clusters and can be ignored
+		"ScrapeLimitForTargetExceeded",
+	}
+
+	for _, name := range alertNamesToIgnore {
+		if name == alert.Labels.AlertName {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (t TargetsAndRulesTest) getNumberofNodeExporter() (int, error) {

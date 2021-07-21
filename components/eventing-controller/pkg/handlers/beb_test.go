@@ -6,34 +6,52 @@ import (
 
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	ctrl "sigs.k8s.io/controller-runtime"
 
+	kymalogger "github.com/kyma-project/kyma/common/logging/logger"
 	eventingv1alpha1 "github.com/kyma-project/kyma/components/eventing-controller/api/v1alpha1"
+	"github.com/kyma-project/kyma/components/eventing-controller/logger"
+	"github.com/kyma-project/kyma/components/eventing-controller/pkg/env"
+	controllertesting "github.com/kyma-project/kyma/components/eventing-controller/testing"
 )
 
 func Test_SyncBebSubscription(t *testing.T) {
 	g := NewGomegaWithT(t)
 
-	// given
-	beb := Beb{
-		Log: ctrl.Log,
+	credentials := &OAuth2ClientCredentials{
+		ClientID:     "foo-client-id",
+		ClientSecret: "foo-client-secret",
 	}
-	err := os.Setenv("CLIENT_ID", "foo")
+	// given
+	defaultLogger, err := logger.New(string(kymalogger.JSON), string(kymalogger.INFO))
+	g.Expect(err).To(BeNil())
+	beb := NewBEB(credentials, defaultLogger)
+	clientId := "client-id"
+	clientSecret := "client-secret"
+	tokenEndpoint := "token-endpoint"
+	envConfig := env.Config{
+		ClientID:      clientId,
+		ClientSecret:  clientSecret,
+		TokenEndpoint: tokenEndpoint,
+	}
+	err = os.Setenv("CLIENT_ID", clientId)
 	g.Expect(err).ShouldNot(HaveOccurred())
-	err = os.Setenv("CLIENT_SECRET", "foo")
+	err = os.Setenv("CLIENT_SECRET", clientSecret)
 	g.Expect(err).ShouldNot(HaveOccurred())
-	err = os.Setenv("TOKEN_ENDPOINT", "foo")
+	err = os.Setenv("TOKEN_ENDPOINT", tokenEndpoint)
 	g.Expect(err).ShouldNot(HaveOccurred())
 
-	beb.Initialize()
+	beb.Initialize(envConfig)
 
 	// when
 	subscription := fixtureValidSubscription("some-name", "some-namespace")
 	subscription.Status.Emshash = 0
 	subscription.Status.Ev2hash = 0
 
+	apiRule := controllertesting.NewAPIRule(subscription, controllertesting.WithPath)
+	controllertesting.WithService("foo-host", "foo-svc", apiRule)
+
 	// then
-	changed, err := beb.SyncBebSubscription(subscription)
+	changed, err := beb.SyncSubscription(subscription, nil, apiRule)
 	g.Expect(err).To(Not(BeNil()))
 	g.Expect(changed).To(BeFalse())
 }
@@ -53,9 +71,18 @@ func fixtureValidSubscription(name, namespace string) *eventingv1alpha1.Subscrip
 			ID:       "id",
 			Protocol: "BEB",
 			ProtocolSettings: &eventingv1alpha1.ProtocolSettings{
-				ContentMode:     eventingv1alpha1.ProtocolSettingsContentModeBinary,
-				ExemptHandshake: true,
-				Qos:             "AT-LEAST_ONCE",
+				ContentMode: func() *string {
+					cm := eventingv1alpha1.ProtocolSettingsContentModeBinary
+					return &cm
+				}(),
+				ExemptHandshake: func() *bool {
+					eh := true
+					return &eh
+				}(),
+				Qos: func() *string {
+					qos := "AT-LEAST_ONCE"
+					return &qos
+				}(),
 				WebhookAuth: &eventingv1alpha1.WebhookAuth{
 					Type:         "oauth2",
 					GrantType:    "client_credentials",
@@ -73,12 +100,12 @@ func fixtureValidSubscription(name, namespace string) *eventingv1alpha1.Subscrip
 						EventSource: &eventingv1alpha1.Filter{
 							Type:     "exact",
 							Property: "source",
-							Value:    "/default/kyma/myinstance",
+							Value:    controllertesting.EventSource,
 						},
 						EventType: &eventingv1alpha1.Filter{
 							Type:     "exact",
 							Property: "type",
-							Value:    "kyma.ev2.poc.event1.v1",
+							Value:    controllertesting.OrderCreatedEventTypeNotClean,
 						},
 					},
 				},

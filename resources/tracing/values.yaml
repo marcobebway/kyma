@@ -2,10 +2,14 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 image:
-  repository: eu.gcr.io/kyma-project/incubator/develop/jaeger-operator
-  tag: 1.18.1-ff002438
+  repository: eu.gcr.io/kyma-project/tpi/jaeger-operator
+  tag: 1.18.1-1de56388
   pullPolicy: IfNotPresent
   imagePullSecrets: []
+
+securityContext:
+  allowPrivilegeEscalation: false
+  privileged: false
 
 resources:
   limits:
@@ -29,7 +33,7 @@ jaeger:
     badgerPvc:
       enabled: false
       accessModes:
-      - ReadWriteOnce
+        - ReadWriteOnce
       size: 1Gi
       storageClassName: ""
   spec:
@@ -61,14 +65,14 @@ jaeger:
         dependencies:
           menuEnabled: true
         menu:
-        - label: "About Jaeger"
-          items:
-          - label: "Documentation"
-            url: "https://www.jaegertracing.io/docs/latest"
-        - label: "About Kyma"
-          items:
-          - label: "Documentation"
-            url: "https://kyma-project.io/docs/components/tracing/"
+          - label: "About Jaeger"
+            items:
+              - label: "Documentation"
+                url: "https://www.jaegertracing.io/docs/latest"
+          - label: "About Kyma"
+            items:
+              - label: "Documentation"
+                url: "https://kyma-project.io/docs/components/tracing/"
     ingress:
       enabled: false
     annotations:
@@ -81,6 +85,12 @@ jaeger:
       requests:
         cpu: 10m
         memory: 40Mi
+    securityContext:
+      runAsUser: 1000
+      runAsGroup: 1000
+      fsGroup: 1000
+      allowPrivilegeEscalation: false
+      privileged: false
 
 rbac:
   # Specifies whether RBAC resources should be created
@@ -108,28 +118,34 @@ global:
     namespaceAdminGroup: runtimeNamespaceAdmin
   tracing:
     enabled: true
-
-kcproxy:
+virtualservice:
+  enabled: true
+authProxy:
+  enabled: true
   replicaCount: 1
   inPort: 10001
+  configDocsLink: ""
   config:
     clientId: "jaeger"
     clientSecret: "oiEWUWOIEwedfgg"
+    useDex: true
     tlsVerify: false
-    resources:
-      uri: "/*"
-      methods: "GET,POST,PUT,DELETE"
-      useKymaGroups: false
-      groups: ""
-      roles: ""
+    emailDomains: "*"
+    groups: ""
+    useKymaGroups: false
     scopes: "groups"
-    headers: ""
-    matchClaims: ""
-    addClaims: ""
+    authLogging: true
+    requestLogging: false
+  env: {}
   nodeSelector: {}
+  podSecurityContext: {}
+  securityContext:
+    allowPrivilegeEscalation: false
+    privileged: false
+    runAsNonRoot: true
   image:
-    repository: eu.gcr.io/kyma-project/external/bitnami/keycloak-gatekeeper
-    tag: 10.0.0
+    repository: eu.gcr.io/kyma-project/tpi/oauth2-proxy
+    tag: 7.1.3-96ae36d3
     pullPolicy: IfNotPresent
   resources:
     limits:

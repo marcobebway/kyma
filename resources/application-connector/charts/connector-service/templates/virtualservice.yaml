@@ -3,7 +3,7 @@ apiVersion: networking.istio.io/v1alpha3
 kind: VirtualService
 metadata:
   name: {{ .Chart.Name }}
-  namespace: {{ .Values.global.namespace }}
+  namespace: {{ .Values.global.integrationNamespace }}
   labels:
     app: {{ template "name" . }}
     release: {{ .Release.Name }}
@@ -26,6 +26,8 @@ spec:
           exact: /v1/runtimes/signingRequests/info
       - uri:
           exact: /v1/runtimes/certificates
+      - uri:
+          exact: /v1/api.yaml
       route:
         - destination:
             port:

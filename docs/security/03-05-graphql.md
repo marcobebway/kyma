@@ -22,7 +22,7 @@ The implementation assigns GraphQL actions to specific Kubernetes verbs:
 ## Available GraphQL actions
 
 To access cluster resources through GraphQL, an action securing given resource must be defined and implemented in the cluster.
-See the [GraphQL schema](https://github.com/kyma-project/kyma/blob/master/components/console-backend-service/internal/gqlschema/schema.graphql) file for the list of actions implemented in every Kyma cluster by default.
+See the [GraphQL schema](https://github.com/kyma-project/kyma/blob/main/components/console-backend-service/internal/gqlschema/schema.graphql) file for the list of actions implemented in every Kyma cluster by default.
 
 ## Secure a defined GraphQL action
 
@@ -42,7 +42,7 @@ This query secures the access to [MicroFrontend](/components/console/#custom-res
 To allow access specifically to the example query, create this RBAC role in the cluster and bind it to a user or a client:
 
   ```
-  apiVersion: rbac.authorization.k8s.io/v1beta1
+  apiVersion: rbac.authorization.k8s.io/v1
   kind: Role
   metadata:
     name: kyma-microfrontends-query-example

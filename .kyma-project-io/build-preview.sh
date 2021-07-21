@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Script for build preview of this repo like in https://kyma-project.io/docs/ on every PR.
-# For more information, please contact with: @m00g3n @aerfio @pPrecel @magicmatatjahu
+# For more information, please contact with: @m00g3n @pPrecel
 
 set -eo pipefail
 
@@ -40,7 +40,7 @@ remove-cached-content() {
 }
 
 copy-website-repo() {
-  git clone -b "master" --single-branch "${WEBSITE_REPO}" "${WEBSITE_DIR}"
+  git clone -b "main" --single-branch "${WEBSITE_REPO}" "${WEBSITE_DIR}"
 }
 
 build-preview() {

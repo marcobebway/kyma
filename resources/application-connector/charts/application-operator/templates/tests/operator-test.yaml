@@ -35,11 +35,15 @@ spec:
           imagePullPolicy: {{ .Values.tests.pullPolicy }}
           env:
           - name: NAMESPACE
-            value: {{ .Values.global.namespace }}
+            value: {{ .Values.global.integrationNamespace }}
           - name: HELM_DRIVER
             value: {{ .Values.controller.args.helmDriver }}
           - name: GATEWAY_DEPLOYED_PER_NAMESPACE
             value: "{{ .Values.global.disableLegacyConnectivity }}"
+          securityContext:
+            runAsUser: {{ .Values.global.podSecurityPolicy.runAsUser }}
+            privileged: {{ .Values.global.podSecurityPolicy.privileged }}
+            allowPrivilegeEscalation: {{ .Values.global.podSecurityPolicy.allowPrivilegeEscalation }}
       restartPolicy: Never
 {{- end }}
 {{ end }}

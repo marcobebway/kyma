@@ -75,9 +75,24 @@ spec:
             - -c
             - |
               oathkeeper credentials generate --alg RS256 > /etc/secrets/jwks.json
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            privileged: false
+            runAsGroup: 101
+            runAsNonRoot: true
+            runAsUser: 100
+          resources:
+            limits:
+              memory: 192Mi
+              cpu: 400m
+            requests:
+              memory: 192Mi
+              cpu: 200m
       containers:
-        -
-          command:
+        - command:
             - /bin/bash
             - -c
             - |
@@ -87,6 +102,22 @@ spec:
                 -n kyma-system -o yaml --dry-run | kubectl apply -f -
           image: {{ .Values.kubectlJob.image }}
           name: override-generator
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            privileged: false
+            runAsGroup: 65534
+            runAsNonRoot: true
+            runAsUser: 65534
+          resources:
+            limits:
+              memory: 128Mi
+              cpu: 100m
+            requests:
+              memory: 128Mi
+              cpu: 100m
           volumeMounts:
           - name: {{ include "oathkeeper.name" . }}-keys-volume
             mountPath: /etc/secrets
